@@ -106,6 +106,10 @@ export default function EquiposPage() {
     setFotoPreviewUrl(equipo.foto_principal_url || null);
     setMostrarFormulario(true);
     setError('');
+    // Scroll automático hacia arriba
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 0);
   };
 
   const handleGuardar = async () => {
@@ -287,12 +291,13 @@ export default function EquiposPage() {
             </select>
             <input
               type="number"
-              min="1"
               placeholder="Cantidad"
               value={formData.cantidad_total}
-              onChange={(e) =>
-                setFormData({ ...formData, cantidad_total: parseInt(e.target.value) || 1 })
-              }
+              onChange={(e) => {
+                const valor = e.target.value;
+                const numero = valor === '' ? 1 : parseInt(valor);
+                setFormData({ ...formData, cantidad_total: Math.max(1, numero) });
+              }}
               className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
