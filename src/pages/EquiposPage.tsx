@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { useRealtimeInventario } from '../hooks/useRealtimeInventario';
 import { Inventario, Categoria, Ubicacion } from '../types';
 import { ArrowLeft, Plus, Edit2, Trash2, Search } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 
 export default function EquiposPage() {
   const navigate = useNavigate();
-  const { equipos, refetch } = useRealtimeInventario();
+  const [equipos, setEquipos] = useState<Inventario[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [editando, setEditando] = useState<Inventario | null>(null);
+  const [editando, setEditando] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -41,19 +41,26 @@ export default function EquiposPage() {
 
   const fetchData = async () => {
     try {
-      const [categoriasRes, ubicacionesRes] = await Promise.all([
+      setLoading(true);
+      const [equiposRes, categoriasRes, ubicacionesRes] = await Promise.all([
+        supabase.from('inventario').select('*').order('nombre'),
         supabase.from('categorias').select('*').order('nombre'),
         supabase.from('ubicaciones').select('*').order('nombre'),
       ]);
 
+      if (equiposRes.error) throw equiposRes.error;
       if (categoriasRes.error) throw categoriasRes.error;
       if (ubicacionesRes.error) throw ubicacionesRes.error;
 
+      setEquipos(equiposRes.data || []);
       setCategorias(categoriasRes.data || []);
       setUbicaciones(ubicacionesRes.data || []);
+      setError('');
     } catch (err) {
       console.error('Error:', err);
       setError('No se pudieron cargar los datos');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,33 +83,29 @@ export default function EquiposPage() {
     setFotoDriveId(null);
     setFotoPreviewUrl(null);
     setMostrarFormulario(true);
+    setError('');
   };
 
   const handleEditar = (equipo: Inventario) => {
-    try {
-      setEditando(equipo);
-      setFormData({
-        nombre: equipo.nombre || '',
-        marca: equipo.marca || '',
-        modelo: equipo.modelo || '',
-        categoria_id: equipo.categoria_id || '',
-        cantidad_total: equipo.cantidad_total || 1,
-        tipo_control: (equipo.tipo_control || 'Individual') as 'Stock' | 'Individual',
-        numero_serie: equipo.numero_serie || '',
-        fecha_compra: equipo.fecha_compra || '',
-        proveedor: equipo.proveedor || '',
-        valor_unitario: equipo.valor_unitario || 0,
-        ubicacion_id: equipo.ubicacion_id || '',
-        observaciones: equipo.observaciones || '',
-      });
-      setFotoDriveId(equipo.foto_principal_drive_id || null);
-      setFotoPreviewUrl(equipo.foto_principal_url || null);
-      setMostrarFormulario(true);
-      setError('');
-    } catch (err) {
-      console.error('Error en handleEditar:', err);
-      setError('Error al abrir el formulario de edición');
-    }
+    setEditando(equipo.id);
+    setFormData({
+      nombre: equipo.nombre || '',
+      marca: equipo.marca || '',
+      modelo: equipo.modelo || '',
+      categoria_id: equipo.categoria_id || '',
+      cantidad_total: equipo.cantidad_total || 1,
+      tipo_control: (equipo.tipo_control || 'Individual') as 'Stock' | 'Individual',
+      numero_serie: equipo.numero_serie || '',
+      fecha_compra: equipo.fecha_compra || '',
+      proveedor: equipo.proveedor || '',
+      valor_unitario: equipo.valor_unitario || 0,
+      ubicacion_id: equipo.ubicacion_id || '',
+      observaciones: equipo.observaciones || '',
+    });
+    setFotoDriveId(equipo.foto_principal_drive_id || null);
+    setFotoPreviewUrl(equipo.foto_principal_url || null);
+    setMostrarFormulario(true);
+    setError('');
   };
 
   const handleGuardar = async () => {
@@ -119,11 +122,11 @@ export default function EquiposPage() {
       const tipoControl = formData.cantidad_total > 1 ? 'Stock' : formData.tipo_control;
 
       const dataConFoto = {
-        nombre: formData.nombre,
-        marca: formData.marca,
-        modelo: formData.modelo,
+        nombre: formData.nombre.trim(),
+        marca: formData.marca || null,
+        modelo: formData.modelo || null,
         categoria_id: formData.categoria_id,
-        cantidad_total: formData.cantidad_total,
+        cantidad_total: Math.max(1, formData.cantidad_total),
         tipo_control: tipoControl,
         numero_serie: formData.numero_serie || null,
         fecha_compra: formData.fecha_compra || null,
@@ -139,7 +142,7 @@ export default function EquiposPage() {
         const { error: err } = await supabase
           .from('inventario')
           .update(dataConFoto)
-          .eq('id', editando.id);
+          .eq('id', editando);
 
         if (err) throw err;
       } else {
@@ -154,12 +157,12 @@ export default function EquiposPage() {
         if (err) throw err;
       }
 
-      await refetch();
+      await fetchData();
       setMostrarFormulario(false);
       setEditando(null);
     } catch (err) {
       console.error('Error:', err);
-      setError(`No se pudo ${editando ? 'editar' : 'agregar'} el equipo`);
+      setError(`No se pudo ${editando ? 'editar' : 'agregar'} el equipo: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
       setGuardando(false);
     }
@@ -175,7 +178,7 @@ export default function EquiposPage() {
         .eq('id', id);
 
       if (err) throw err;
-      await refetch();
+      await fetchData();
     } catch (err) {
       console.error('Error:', err);
       setError('No se pudo eliminar el equipo');
@@ -192,6 +195,14 @@ export default function EquiposPage() {
       e.marca?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.modelo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -287,7 +298,7 @@ export default function EquiposPage() {
             <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
               <span className="text-sm font-semibold">Tipo:</span>
               <span className="text-sm font-bold text-blue-600">
-                {formData.cantidad_total > 1 ? 'Stock (auto)' : formData.tipo_control}
+                {formData.cantidad_total > 1 ? '✓ Stock (auto)' : formData.tipo_control}
               </span>
             </div>
             <input
@@ -350,6 +361,9 @@ export default function EquiposPage() {
               nombreEquipo={formData.nombre || 'Equipo'}
               imagenActual={fotoPreviewUrl || undefined}
             />
+            {fotoPreviewUrl && (
+              <img src={fotoPreviewUrl} alt="Preview" className="max-h-40 rounded-lg" />
+            )}
           </div>
 
           <div className="flex gap-2 justify-end">
