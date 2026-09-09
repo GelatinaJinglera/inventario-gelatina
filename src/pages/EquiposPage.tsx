@@ -79,24 +79,30 @@ export default function EquiposPage() {
   };
 
   const handleEditar = (equipo: Inventario) => {
-    setEditando(equipo);
-    setFormData({
-      nombre: equipo.nombre,
-      marca: equipo.marca,
-      modelo: equipo.modelo,
-      categoria_id: equipo.categoria_id,
-      cantidad_total: equipo.cantidad_total,
-      tipo_control: equipo.tipo_control,
-      numero_serie: equipo.numero_serie || '',
-      fecha_compra: equipo.fecha_compra || '',
-      proveedor: equipo.proveedor || '',
-      valor_unitario: equipo.valor_unitario || 0,
-      ubicacion_id: equipo.ubicacion_id,
-      observaciones: equipo.observaciones || '',
-    });
-    setFotoDriveId(equipo.foto_principal_drive_id || null);
-    setFotoPreviewUrl(equipo.foto_principal_url || null);
-    setMostrarFormulario(true);
+    try {
+      setEditando(equipo);
+      setFormData({
+        nombre: equipo.nombre || '',
+        marca: equipo.marca || '',
+        modelo: equipo.modelo || '',
+        categoria_id: equipo.categoria_id || '',
+        cantidad_total: equipo.cantidad_total || 1,
+        tipo_control: (equipo.tipo_control || 'Individual') as 'Stock' | 'Individual',
+        numero_serie: equipo.numero_serie || '',
+        fecha_compra: equipo.fecha_compra || '',
+        proveedor: equipo.proveedor || '',
+        valor_unitario: equipo.valor_unitario || 0,
+        ubicacion_id: equipo.ubicacion_id || '',
+        observaciones: equipo.observaciones || '',
+      });
+      setFotoDriveId(equipo.foto_principal_drive_id || null);
+      setFotoPreviewUrl(equipo.foto_principal_url || null);
+      setMostrarFormulario(true);
+      setError('');
+    } catch (err) {
+      console.error('Error en handleEditar:', err);
+      setError('Error al abrir el formulario de edición');
+    }
   };
 
   const handleGuardar = async () => {
@@ -113,9 +119,18 @@ export default function EquiposPage() {
       const tipoControl = formData.cantidad_total > 1 ? 'Stock' : formData.tipo_control;
 
       const dataConFoto = {
-        ...formData,
+        nombre: formData.nombre,
+        marca: formData.marca,
+        modelo: formData.modelo,
+        categoria_id: formData.categoria_id,
+        cantidad_total: formData.cantidad_total,
         tipo_control: tipoControl,
+        numero_serie: formData.numero_serie || null,
         fecha_compra: formData.fecha_compra || null,
+        proveedor: formData.proveedor || null,
+        valor_unitario: formData.valor_unitario || null,
+        ubicacion_id: formData.ubicacion_id,
+        observaciones: formData.observaciones || null,
         foto_principal_drive_id: fotoDriveId,
         foto_principal_url: fotoPreviewUrl,
       };
@@ -141,6 +156,7 @@ export default function EquiposPage() {
 
       await refetch();
       setMostrarFormulario(false);
+      setEditando(null);
     } catch (err) {
       console.error('Error:', err);
       setError(`No se pudo ${editando ? 'editar' : 'agregar'} el equipo`);
@@ -338,7 +354,10 @@ export default function EquiposPage() {
 
           <div className="flex gap-2 justify-end">
             <button
-              onClick={() => setMostrarFormulario(false)}
+              onClick={() => {
+                setMostrarFormulario(false);
+                setEditando(null);
+              }}
               className="px-4 py-2 border rounded-lg hover:bg-gray-50"
             >
               Cancelar
