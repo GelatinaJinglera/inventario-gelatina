@@ -32,6 +32,7 @@ export default function EquiposPage() {
     observaciones: '',
   });
 
+  const [cantidadInput, setCantidadInput] = useState('1');
   const [fotoDriveId, setFotoDriveId] = useState<string | null>(null);
   const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
 
@@ -80,6 +81,7 @@ export default function EquiposPage() {
       ubicacion_id: '',
       observaciones: '',
     });
+    setCantidadInput('1');
     setFotoDriveId(null);
     setFotoPreviewUrl(null);
     setMostrarFormulario(true);
@@ -102,6 +104,7 @@ export default function EquiposPage() {
       ubicacion_id: equipo.ubicacion_id || '',
       observaciones: equipo.observaciones || '',
     });
+    setCantidadInput(String(equipo.cantidad_total || 1));
     setFotoDriveId(equipo.foto_principal_drive_id || null);
     setFotoPreviewUrl(equipo.foto_principal_url || null);
     setMostrarFormulario(true);
@@ -122,15 +125,18 @@ export default function EquiposPage() {
       setGuardando(true);
       setError('');
 
-      // Auto-cambiar a Stock si cantidad_total > 1
-      const tipoControl = formData.cantidad_total > 1 ? 'Stock' : formData.tipo_control;
+      // La cantidad real sale del campo de texto
+      const cantidadFinal = Math.max(1, parseInt(cantidadInput) || 1);
+
+      // Auto-cambiar a Stock si la cantidad es mayor a 1
+      const tipoControl = cantidadFinal > 1 ? 'Stock' : 'Individual';
 
       const dataConFoto = {
         nombre: formData.nombre.trim(),
         marca: formData.marca || null,
         modelo: formData.modelo || null,
         categoria_id: formData.categoria_id,
-        cantidad_total: Math.max(1, formData.cantidad_total),
+        cantidad_total: cantidadFinal,
         tipo_control: tipoControl,
         numero_serie: formData.numero_serie || null,
         fecha_compra: formData.fecha_compra || null,
@@ -290,20 +296,27 @@ export default function EquiposPage() {
               ))}
             </select>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="Cantidad"
-              value={formData.cantidad_total}
+              value={cantidadInput}
               onChange={(e) => {
-                const valor = e.target.value;
-                const numero = valor === '' ? 1 : parseInt(valor);
-                setFormData({ ...formData, cantidad_total: Math.max(1, numero) });
+                // Solo digitos. Permite quedar vacio mientras se escribe.
+                const soloDigitos = e.target.value.replace(/\D/g, '');
+                setCantidadInput(soloDigitos);
+              }}
+              onBlur={() => {
+                // Al salir del campo, si quedo vacio o en 0, vuelve a 1
+                if (cantidadInput === '' || parseInt(cantidadInput) < 1) {
+                  setCantidadInput('1');
+                }
               }}
               className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
               <span className="text-sm font-semibold">Tipo:</span>
               <span className="text-sm font-bold text-blue-600">
-                {formData.cantidad_total > 1 ? '✓ Stock (auto)' : formData.tipo_control}
+                {(parseInt(cantidadInput) || 1) > 1 ? '✓ Stock (auto)' : 'Individual'}
               </span>
             </div>
             <input
