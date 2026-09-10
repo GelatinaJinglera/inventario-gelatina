@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { Inventario, Categoria, Ubicacion } from '../types';
@@ -32,6 +32,7 @@ export default function EquiposPage() {
     observaciones: '',
   });
 
+  const formularioRef = useRef<HTMLDivElement>(null);
   const [cantidadInput, setCantidadInput] = useState('1');
   const [fotoDriveId, setFotoDriveId] = useState<string | null>(null);
   const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
@@ -39,6 +40,13 @@ export default function EquiposPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Scroll al formulario cuando se abre (el contenedor que scrollea es <main>, no window)
+  useEffect(() => {
+    if (mostrarFormulario && formularioRef.current) {
+      formularioRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [mostrarFormulario, editando]);
 
   const fetchData = async () => {
     try {
@@ -109,10 +117,6 @@ export default function EquiposPage() {
     setFotoPreviewUrl(equipo.foto_principal_url || null);
     setMostrarFormulario(true);
     setError('');
-    // Scroll automático hacia arriba
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 0);
   };
 
   const handleGuardar = async () => {
@@ -256,7 +260,7 @@ export default function EquiposPage() {
       </div>
 
       {mostrarFormulario && (
-        <div className="bg-white p-6 rounded-lg border border-gray-300 space-y-4">
+        <div ref={formularioRef} className="bg-white p-6 rounded-lg border border-gray-300 space-y-4">
           <h2 className="text-2xl font-bold">
             {editando ? 'Editar Equipo' : 'Nuevo Equipo'}
           </h2>
