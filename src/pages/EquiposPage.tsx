@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { Inventario, Categoria, Ubicacion } from '../types';
-import { ArrowLeft, Plus, Edit2, Trash2, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 
 export default function EquiposPage() {
@@ -32,7 +32,6 @@ export default function EquiposPage() {
     observaciones: '',
   });
 
-  const formularioRef = useRef<HTMLDivElement>(null);
   const [cantidadInput, setCantidadInput] = useState('1');
   const [fotoDriveId, setFotoDriveId] = useState<string | null>(null);
   const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
@@ -40,13 +39,6 @@ export default function EquiposPage() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // Scroll al formulario cuando se abre (el contenedor que scrollea es <main>, no window)
-  useEffect(() => {
-    if (mostrarFormulario && formularioRef.current) {
-      formularioRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [mostrarFormulario, editando]);
 
   const fetchData = async () => {
     try {
@@ -260,10 +252,20 @@ export default function EquiposPage() {
       </div>
 
       {mostrarFormulario && (
-        <div ref={formularioRef} className="bg-white p-6 rounded-lg border border-gray-300 space-y-4">
-          <h2 className="text-2xl font-bold">
-            {editando ? 'Editar Equipo' : 'Nuevo Equipo'}
-          </h2>
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-60 flex items-start justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-lg border border-gray-300 w-full max-w-3xl my-8 p-6 space-y-4">
+          <div className="flex items-center justify-between sticky top-0 bg-white pb-2">
+            <h2 className="text-2xl font-bold">
+              {editando ? 'Editar Equipo' : 'Nuevo Equipo'}
+            </h2>
+            <button
+              onClick={() => { setMostrarFormulario(false); setEditando(null); }}
+              className="p-2 rounded-lg hover:bg-gray-100"
+              aria-label="Cerrar"
+            >
+              <X size={24} />
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
@@ -405,6 +407,7 @@ export default function EquiposPage() {
             >
               {guardando ? 'Guardando...' : 'Guardar'}
             </button>
+          </div>
           </div>
         </div>
       )}

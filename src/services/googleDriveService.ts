@@ -144,6 +144,23 @@ export const subirFotoAGoogleDrive = async (
     }
 
     const result = await response.json();
+
+    // Hacer el archivo publico para que cualquiera pueda ver la foto.
+    // Sin esto, solo la ve quien esta logueado con la cuenta duena del archivo.
+    try {
+      await fetch(`https://www.googleapis.com/drive/v3/files/${result.id}/permissions`, {
+        method: 'POST',
+        headers: new Headers({
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+      });
+    } catch (permErr) {
+      // Si falla el permiso, la foto igual quedo subida.
+      console.error('No se pudo hacer publica la foto:', permErr);
+    }
+
     return result.id;
   } catch (err) {
     console.error('Error subiendo a Google Drive:', err);
